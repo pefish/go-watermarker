@@ -57,15 +57,11 @@ func main() {
 			if info.IsDir() {
 				return nil
 			}
-			wd, err := os.Getwd()
+			rel, err := filepath.Rel(srcFilePath, path)
 			if err != nil {
-				log.Fatalf("Getwd - %s", err)
+				log.Fatalf("获取相对地址 %s %s - %s", srcFilePath, path, err)
 			}
-			rel, err := filepath.Rel(wd, path)
-			if err != nil {
-				log.Fatalf("获取相对地址 %s %s - %s", wd, path, err)
-			}
-			if strings.HasPrefix(rel, ".") {
+			if strings.HasPrefix(rel, ".") {  // 忽略目标目录中的隐藏文件文件夹以及文件
 				return nil
 			}
 			if !strings.HasSuffix(path, ".jpg") && !strings.HasSuffix(path, ".png") {
@@ -74,6 +70,7 @@ func main() {
 			if strings.Contains(rel, noCoverDirName) {
 				return nil
 			}
+
 			markSingleFile(w, path, *isCover)
 			return nil
 		})
@@ -86,7 +83,7 @@ func main() {
 }
 
 func markSingleFile(w *watermark.Watermark, srcFilePath string, isCover bool) {
-	fmt.Printf("%s\n", srcFilePath)
+	fmt.Printf("%s ...\n", srcFilePath)
 	targetFilePath := srcFilePath
 	if !isCover {  // 不覆盖源文件
 		dirPath := path.Join(filepath.Dir(srcFilePath), noCoverDirName)

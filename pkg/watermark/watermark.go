@@ -18,13 +18,13 @@ import (
 	"path"
 )
 
-var ErrUnsupportedWatermarkType = errors.New("不支持的水印类型")
+var ErrUnsupportedWatermarkType = errors.New("不支持的类型")
 
-func (w *Watermark) MarkGif(srcPath *os.File, dstPath string) error {
+func (w *Watermark) MarkGif(srcFile *os.File, dstPath string) error {
 	return ErrUnsupportedWatermarkType
 }
 
-func (w *Watermark) markJpgAndPng(srcImg image.Image, out io.Writer) error {
+func (w *Watermark) markJpgAndPng(srcImg image.Image) (image.Image, error) {
 	// 新建背景图层，将源图片全部画上去
 	img := image.NewNRGBA(srcImg.Bounds())
 	for y := 0; y < img.Bounds().Dy(); y++ {
@@ -40,23 +40,23 @@ func (w *Watermark) markJpgAndPng(srcImg image.Image, out io.Writer) error {
 	// 解压出font资源
 	fontGzipBytes, err := hex.DecodeString(asset.FontStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var dstBuf bytes.Buffer
 	zr, err := gzip.NewReader(bytes.NewReader(fontGzipBytes))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer zr.Close()
 	_, err = io.Copy(&dstBuf, zr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fontBytes := dstBuf.Bytes()
 	font, err := freetype.ParseFont(fontBytes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	f := freetype.NewContext()
 	f.SetDPI(72)
@@ -65,24 +65,20 @@ func (w *Watermark) markJpgAndPng(srcImg image.Image, out io.Writer) error {
 	f.SetClip(fontImg.Bounds())
 	f.SetDst(fontImg)  // 设置写字的目标图层
 	f.SetSrc(image.NewUniform(w.textColor))
-	pt := freetype.Pt(fontImg.Bounds().Dx()/2, fontImg.Bounds().Dy()/2)  // 参数是值开始写字的位置
+	pt := freetype.Pt(fontImg.Bounds().Min.X + fontImg.Bounds().Dx()/4, fontImg.Bounds().Min.Y + 60)  // 左上角原点，x轴向下。参数是开始写字的位置
 	_, err = f.DrawString(w.text, pt)  // 将字写上去
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 字体图层旋转30度
-	fontImg = imaging.Rotate(fontImg, 30, color.Transparent)
+	fontImg = imaging.Rotate(fontImg, 20, color.Transparent)  // 右下角为支点旋转
 
 	// 字体图层合并到背景图层
 	draw.Draw(img, img.Bounds(), fontImg, image.ZP, draw.Over)
 
-	//保存到新文件中
-	err = jpeg.Encode(out, img, &jpeg.Options{Quality: 100})
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return img, nil
 }
 
 func (w *Watermark) MarkJpg(srcFile *os.File, dstPath string) error {
@@ -90,13 +86,22 @@ func (w *Watermark) MarkJpg(srcFile *os.File, dstPath string) error {
 	if err != nil {
 		return err
 	}
+
+	img, err := w.markJpgAndPng(jpgImg)
+	if err != nil {
+		return err
+	}
+	//保存到新文件中
 	newFile, err := os.Create(dstPath)
 	if err != nil {
 		return err
 	}
 	defer newFile.Close()
-	return w.markJpgAndPng(jpgImg, newFile)
-
+	err = jpeg.Encode(newFile, img, &jpeg.Options{Quality: 100})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (w *Watermark) MarkPng(srcFile *os.File, dstPath string) error {
@@ -104,12 +109,20 @@ func (w *Watermark) MarkPng(srcFile *os.File, dstPath string) error {
 	if err != nil {
 		return err
 	}
+	img, err := w.markJpgAndPng(pngImg)
+	if err != nil {
+		return err
+	}
 	newFile, err := os.Create(dstPath)
 	if err != nil {
 		return err
 	}
 	defer newFile.Close()
-	return w.markJpgAndPng(pngImg, newFile)
+	err = png.Encode(newFile, img)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type Watermark struct {
