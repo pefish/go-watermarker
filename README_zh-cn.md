@@ -1,16 +1,16 @@
 # go-watermarker
 
-Read this in other languages: [English](README.md), [简体中文](README_zh-cn.md)
+其他语言版本的README: [English](README.md), [简体中文](README_zh-cn.md)
 
-A tool to add text watermark for jpg/png images.
+一款为图片添加文字水印的工具，图片暂时只支持 jpg/png
 
-## Install
+## 安装
 
 ```shell script
 go get -u github.com/pefish/go-watermarker/cmd/...
 ```
 
-## Usage
+## 使用
 
 ```shell
 go-watermarker --text="this is watermark" --cover ./1.jpg
@@ -18,9 +18,9 @@ go-watermarker --text="this is watermark" --cover ./1.jpg
 go-watermarker --text="this is watermark" ./test/
 ```
 
-## Document
+## 文档
 
-You can use `go-watermarker --help` to find document.
+可以通过 `go-watermarker --help` 查看帮助文档。
 
 ```shell script
 go-watermarker 是一款为图片添加文字水印的工具. Enjoy it !!!
@@ -34,9 +34,9 @@ Usage: go-watermarker [option] <target file/path>
     	水印的文本 (default "www.pefish.club")
 ```
 
-If your target is a dictionary, this dictionary will be traversed recursively，all jpg/png images will be watermarked.
+如果目标是一个目录，则会遍历目录下的所有图片，都会被盖上水印。
 
-If `-cover` is set, source file will be covered directly(Be careful!!!). Or new dictionary named by `go-watermarker` will be created, all watermarked images are put there.
+如果指定了 `-cover` ，那么原图片会被直接覆盖，没有任何备份（小心一点）。否则图片所在的目录都会生成一个名字为 `go-watermarker` 的文件夹，盖过水印的图片都会放里面，原图片不动。
 
 ## Security Vulnerabilities
 
